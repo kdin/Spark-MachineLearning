@@ -32,13 +32,16 @@ df.printSchema()
 val colType  = df.dtypes
 colType.foreach(l=> imputed(l))
 def imputed(col: (String,String)) = {
-	if (col._2.equals("IntegerType"))
-	{
-		val mean1 = df.select(mean(col._1)).first()(0).asInstanceOf[Double]
+	val mean1 = df.select(mean(col._1)).first()(0).asInstanceOf[Double]
+	if (col._2.equals("IntegerType")) {
 		if (mean1 >= 0.5) 
 			df = df.na.fill(1, Seq(col._1))
 		else
 			df = df.na.fill(0, Seq(col._1))	
+	}
+	else if (col._2.equals("DoubleType")) {
+		df = df.na.fill(mean1, Seq(col._1))		
+	}
 	}
 		
 }
