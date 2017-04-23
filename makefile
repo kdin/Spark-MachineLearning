@@ -2,18 +2,25 @@
 
 # Customize these paths for your environment.
 # -----------------------------------------------------------
-spark.root=/usr/local/spark/
-jar.name=Pre-1.jar
+
+spark.root=/home/kd/Downloads/spark-2.1.0-bin-hadoop2.7
+jar.name=ModelFile-1.jar
 jar.path=target/${jar.name}
 local.input=input
+local.parts=parts
+local.core=core-var
+local.output=output
 # AWS EMR Execution
+job.name=cs6240.ModelFile
 aws.emr.release=emr-5.2.1
 aws.ami.version=3.11.0
 aws.region=us-east-1
-aws.bucket.name=harshita-homew3
-aws.subnet.id=subnet-2fbdfe02
+aws.bucket.name=kdin-project
+aws.subnet.id=subnet-9d763ab0
 aws.input=input
-aws.output=outputAWSForSpark6again
+aws.parts=Subset
+aws.core=core-var
+
 aws.log.dir=log
 aws.num.nodes=5
 aws.instance.type=m4.large
@@ -31,8 +38,8 @@ clean-local-output:
 # Runs standalone
 # Make sure Hadoop  is set up (in /etc/hadoop files) for standalone operation (not pseudo-cluster).
 # https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SingleCluster.html#Standalone_Operation
-alone: jar clean-local-output
-	${spark.root}/bin/spark-submit --class ${job.name} --master local[*] ${jar.path} ${local.input} ${local.output}
+alone: jar
+	${spark.root}/bin/spark-submit --class ${job.name} --master local[*] ${jar.path} ${local.input} ${local.parts} ${local.core}
 
 
 #-------------------------------------------------------------
@@ -57,16 +64,17 @@ upload-app-aws:
 # Main EMR launch. ##### upload-app-aws
 cloud: jar upload-app-aws
 	aws emr create-cluster \
-		--name "homework4-6" \
+		--name "Subset" \
 		--release-label ${aws.emr.release} \
 		--instance-groups '[{"InstanceCount":${aws.num.nodes},"InstanceGroupType":"CORE","InstanceType":"${aws.instance.type}"},{"InstanceCount":1,"InstanceGroupType":"MASTER","InstanceType":"${aws.instance.type}"}]' \
 	    --applications Name=Spark \
-	    --steps '[{"Name":"Spark Program", "Args":["--class", "${job.name}", "--master", "yarn", "--deploy-mode", "cluster", "s3://${aws.bucket.name}/${jar.name}", "s3://${aws.bucket.name}/${aws.input}","s3://${aws.bucket.name}/${aws.output}"],"Type":"Spark","Jar":"s3://${aws.bucket.name}/${jar.name}","ActionOnFailure":"TERMINATE_CLUSTER"}]' \
+	    --steps '[{"Name":"Spark Program", "Args":["--class", "${job.name}", "--master", "yarn", "--deploy-mode", "cluster", "s3://${aws.bucket.name}/${jar.name}", "s3://${aws.bucket.name}/${aws.input}","s3://${aws.bucket.name}/${aws.parts}","s3://${aws.bucket.name}/${aws.core}"],"Type":"Spark","Jar":"s3://${aws.bucket.name}/${jar.name}","ActionOnFailure":"TERMINATE_CLUSTER"}]' \
 		--log-uri s3://${aws.bucket.name}/${aws.log.dir} \
 		--service-role EMR_DefaultRole \
 		--ec2-attributes InstanceProfile=EMR_EC2_DefaultRole,SubnetId=${aws.subnet.id} \
 		--configurations '[{"Classification":"spark", "Properties":{"maximizeResourceAllocation": "true"}}]' \
 		--region ${aws.region} \
 		--enable-debugging \
+		--auto-terminate
 		
 
